@@ -1,0 +1,30 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Nested Loop",
+      "Startup Cost": 0.43,
+      "Total Cost": 9876.54,
+      "Plan Rows": 200,
+      "Actual Rows": 215,
+      "Plans": [
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "events",
+          "Plan Rows": 100,
+          "Actual Rows": 1500,
+          "Total Cost": 5000.0
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "users",
+          "Index Name": "users_pkey",
+          "Plan Rows": 1,
+          "Actual Rows": 1,
+          "Total Cost": 8.5
+        }
+      ]
+    },
+    "Planning Time": 0.31,
+    "Execution Time": 412.8
+  }
+]

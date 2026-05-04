@@ -1,0 +1,16 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Index Scan",
+      "Relation Name": "orders",
+      "Index Name": "orders_user_id_idx",
+      "Alias": "orders",
+      "Startup Cost": 0.43,
+      "Total Cost": 12.45,
+      "Plan Rows": 10,
+      "Actual Rows": 9
+    },
+    "Planning Time": 0.05,
+    "Execution Time": 0.42
+  }
+]
