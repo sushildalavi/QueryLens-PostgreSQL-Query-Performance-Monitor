@@ -24,22 +24,34 @@ const ctx = await browser.newContext({
 });
 const page = await ctx.newPage();
 
-async function snap(path, file, { fullPage = false, waitMs = 800 } = {}) {
+async function snap(path, file, { fullPage = false, waitMs = 800, before } = {}) {
   const url = `${BASE}${path}`;
   console.log(`→ ${url}`);
   await page.goto(url, { waitUntil: "networkidle" });
-  // wait for animations to settle
   await page.waitForTimeout(waitMs);
-  // make sure scroll is at top for full-page consistency
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.waitForTimeout(150);
+  if (before) await before(page);
   const dest = `${OUT}/${file}`;
   await page.screenshot({ path: dest, fullPage });
   console.log(`  saved ${dest}`);
 }
 
 await snap("/", "dashboard.png", { fullPage: true });
+
+// command palette (cmd+k) opened with a query typed in
+await snap("/", "command-palette.png", {
+  fullPage: false,
+  before: async (p) => {
+    await p.keyboard.press("Meta+k");
+    await p.waitForTimeout(250);
+    await p.keyboard.type("orders", { delay: 30 });
+    await p.waitForTimeout(250);
+  },
+});
+
 await snap("/regressions", "regressions.png", { fullPage: true });
+
 if (fid) {
   await snap(`/queries/${fid}`, "query-detail.png", { fullPage: true });
 } else {

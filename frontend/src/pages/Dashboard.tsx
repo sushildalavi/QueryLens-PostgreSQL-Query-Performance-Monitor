@@ -12,10 +12,10 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useCollect, useQueries, useRegressions } from "../api/hooks";
+import { ActivityFeed } from "../components/ActivityFeed";
 import { LatencyChart } from "../components/LatencyChart";
 import { MetricCard } from "../components/MetricCard";
 import { QueryTable } from "../components/QueryTable";
-import { RegressionBadge } from "../components/RegressionBadge";
 import { RegressionTypeIcon, regressionMeta } from "../components/RegressionTypeIcon";
 import { Section, Skeleton } from "../components/Section";
 import { SeverityBar } from "../components/SeverityBar";
@@ -267,8 +267,8 @@ export function Dashboard() {
 
       <Section
         icon={AlertTriangle}
-        title="Recent regressions"
-        hint="newest first · click for query context"
+        title="Activity feed"
+        hint="snapshots and regressions, newest first"
         action={
           <button
             onClick={() => navigate("/regressions")}
@@ -278,55 +278,29 @@ export function Dashboard() {
           </button>
         }
       >
-        <div className="p-2">
-          {!regAll ? (
-            <div className="space-y-2 p-2">
-              {[0, 1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : regressions.length === 0 ? (
-            <div className="px-3 py-12 text-center">
-              <p className="text-sm text-muted">
-                No regressions yet — run the collector after a workload change.
-              </p>
-              <p className="text-2xs text-muted mt-2 font-mono">
-                tip: <span className="text-accent">make demo</span>
-              </p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-edge stagger-fast">
-              {regressions.slice(0, 10).map((r) => {
-                const meta = regressionMeta(r.regression_type);
-                return (
-                  <li
-                    key={r.id}
-                    className="flex items-start gap-3 px-3 py-2.5 cursor-pointer hover:bg-accent/5 rounded-md transition-colors group"
-                    onClick={() => navigate(`/queries/${r.fingerprint_id}`)}
-                  >
-                    <RegressionBadge severity={r.severity} className="mt-0.5 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-primary leading-snug flex items-center gap-2">
-                        <RegressionTypeIcon type={r.regression_type} size={13} />
-                        <span className="text-2xs font-mono text-muted uppercase tracking-wider">
-                          {meta.label}
-                        </span>
-                      </p>
-                      <p className="text-xs text-secondary mt-1 leading-snug">{r.message}</p>
-                      <p className="text-2xs text-muted mt-1 font-mono truncate">
-                        {r.normalized_query.slice(0, 110)}
-                      </p>
-                    </div>
-                    <ChevronRight
-                      size={14}
-                      className="text-muted opacity-0 group-hover:opacity-100 mt-0.5 transition-opacity"
-                    />
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+        {!regAll ? (
+          <div className="space-y-2 p-5">
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : regressions.length === 0 && queries.length === 0 ? (
+          <div className="px-3 py-12 text-center">
+            <p className="text-sm text-muted">
+              No activity yet — run the collector after a workload change.
+            </p>
+            <p className="text-2xs text-muted mt-2 font-mono">
+              tip: <span className="text-accent">make demo</span>
+            </p>
+          </div>
+        ) : (
+          <ActivityFeed
+            queries={queries}
+            regressions={regressions}
+            limit={12}
+            onRegressionClick={(fid) => navigate(`/queries/${fid}`)}
+          />
+        )}
       </Section>
 
       <Section

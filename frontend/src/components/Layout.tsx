@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Activity, AlertTriangle, Github } from "lucide-react";
 import { useEffect, useState } from "react";
+import { CommandPalette } from "./CommandPalette";
 
 function LivePulse() {
   return (
@@ -77,6 +78,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {navItem("/regressions", "Regressions", AlertTriangle)}
           </nav>
           <div className="ml-auto hidden sm:flex items-center gap-4 text-2xs text-muted font-mono">
+            <CommandPalette />
             <span className="inline-flex items-center gap-2">
               <LivePulse />
               <span>live</span>

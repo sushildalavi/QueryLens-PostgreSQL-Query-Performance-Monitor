@@ -216,16 +216,19 @@ Tests cover:
 
 ## Screenshots
 
-> **Dashboard** — bento layout, severity breakdown, latency landscape, regressions feed and slowest-query table.
+> **Dashboard** — bento layout with KPI cards, latency landscape, severity breakdown with top regression types, activity feed timeline, and a sortable & filterable slowest-query table.
 ![dashboard](docs/screenshots/dashboard.png)
 
-> **Query detail** — SQL with syntax highlighting and line numbers, mean-exec & call-count time series, parsed execution plan, and full regression history for the fingerprint.
+> **Command palette** — `⌘K` (or `/`) opens a fuzzy search across queries, regressions, and actions. Arrow keys to navigate, Enter to drill in.
+![command palette](docs/screenshots/command-palette.png)
+
+> **Query detail** — SQL with syntax highlighting and line numbers, mean-exec & call-count time series with an animated peak marker, parsed execution plan tree, and full regression history for the fingerprint.
 ![query-detail](docs/screenshots/query-detail.png)
 
 > **Regressions feed** — every detection by severity and type, with one click to drill into the offending fingerprint.
 ![regressions](docs/screenshots/regressions.png)
 
-Screenshots are captured headlessly with Playwright (`docs/screenshots/capture.mjs`) against a running stack — they reflect real demo data, not mocks.
+Screenshots are captured headlessly with Playwright (`docs/screenshots/capture.mjs`) against a running stack — they reflect real demo data, not mocks. Run `make screenshots` to regenerate.
 
 ---
 
