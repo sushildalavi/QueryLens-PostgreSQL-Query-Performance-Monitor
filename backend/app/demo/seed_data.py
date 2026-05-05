@@ -191,6 +191,10 @@ def seed(reset: bool = False) -> None:
 
         if _row_count(conn, "events") < EVENTS:
             log.info("seeding %s events", EVENTS)
+            _event_sql = text(
+                "INSERT INTO demo.events (user_id, event_type, payload, created_at) "
+                "VALUES (:user_id, :event_type, CAST(:payload AS jsonb), :created_at)"
+            )
             rows = []
             for _ in range(EVENTS):
                 rows.append(
@@ -202,22 +206,10 @@ def seed(reset: bool = False) -> None:
                     }
                 )
                 if len(rows) >= 10_000:
-                    conn.execute(
-                        text(
-                            "INSERT INTO demo.events (user_id, event_type, payload, created_at) "
-                            "VALUES (:user_id, :event_type, :payload::jsonb, :created_at)"
-                        ),
-                        rows,
-                    )
+                    conn.execute(_event_sql, rows)
                     rows = []
             if rows:
-                conn.execute(
-                    text(
-                        "INSERT INTO demo.events (user_id, event_type, payload, created_at) "
-                        "VALUES (:user_id, :event_type, :payload::jsonb, :created_at)"
-                    ),
-                    rows,
-                )
+                conn.execute(_event_sql, rows)
 
         conn.execute(text("ANALYZE demo.users, demo.products, demo.orders, demo.order_items, demo.events"))
     log.info("seed done")
