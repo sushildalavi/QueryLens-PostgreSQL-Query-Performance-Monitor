@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+psycopg://querylens:querylens@db:5432/querylens"
-    MIN_MEAN_MS: float = 1.0
+    MIN_MEAN_MS: float = 0.1
     ALLOW_EXPLAIN_ANALYZE: bool = False
     EXPLAIN_TIMEOUT_MS: int = 5000
 
@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     LLM_MODEL: str = "gpt-4o-mini"
 
-    CORS_ORIGINS: str = "http://localhost:5173"
+    CORS_ORIGINS: str = "http://localhost:3030"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
