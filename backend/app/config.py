@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+psycopg://querylens:querylens@db:5432/querylens"
-    MIN_MEAN_MS: float = 0.1
+    MIN_MEAN_MS: float = 0.0
     ALLOW_EXPLAIN_ANALYZE: bool = False
     EXPLAIN_TIMEOUT_MS: int = 5000
 
