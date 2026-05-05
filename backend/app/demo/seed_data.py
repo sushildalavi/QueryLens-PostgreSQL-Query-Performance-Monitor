@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import text
 
@@ -89,7 +89,7 @@ def _row_count(conn, table: str) -> int:
 
 def seed(reset: bool = False) -> None:
     rng = random.Random(42)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     with engine.begin() as conn:
         _ensure_schema(conn)

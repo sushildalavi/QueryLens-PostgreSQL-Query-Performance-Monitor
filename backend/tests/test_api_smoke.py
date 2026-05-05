@@ -15,15 +15,15 @@ def client(test_engine, db_url):
     os.environ["DATABASE_URL"] = db_url
 
     # Re-import settings so it picks up the new DATABASE_URL
-    import importlib
     import app.config as cfg_mod
 
     cfg_mod.settings = cfg_mod.Settings()
 
     # Override engine and SessionLocal in database module
-    import app.database as db_mod
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
+
+    import app.database as db_mod
 
     db_mod.engine = create_engine(db_url, pool_pre_ping=True, future=True)
     db_mod.SessionLocal = sessionmaker(bind=db_mod.engine, autoflush=False, expire_on_commit=False)
