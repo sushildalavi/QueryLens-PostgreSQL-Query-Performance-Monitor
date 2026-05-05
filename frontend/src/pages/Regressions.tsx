@@ -26,13 +26,16 @@ export function Regressions() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 animate-fade-up">
         <div>
           <p className="text-2xs uppercase tracking-widest text-muted font-mono">
             regression feed
           </p>
-          <h1 className="text-2xl font-semibold text-primary tracking-tight mt-1">
-            Things that got slower.
+          <h1 className="font-display text-3xl font-semibold text-primary tracking-tightest mt-1.5 leading-tight">
+            Things that got{" "}
+            <span className="bg-gradient-to-r from-bad via-warn to-bad bg-clip-text text-transparent">
+              slower.
+            </span>
           </h1>
           <p className="text-secondary text-sm mt-1.5">
             <span className="num text-primary">{total.toLocaleString()}</span>{" "}
@@ -91,9 +94,10 @@ export function Regressions() {
                 {items.map((r, i) => (
                   <tr
                     key={r.id}
-                    className={`group cursor-pointer border-t border-edge transition-colors ${
+                    className={`group cursor-pointer border-t border-edge transition-colors animate-fade-up ${
                       i % 2 === 0 ? "bg-transparent" : "bg-panel-2/30"
                     } hover:bg-accent/5`}
+                    style={{ animationDelay: `${Math.min(i * 18, 240)}ms` }}
                     onClick={() => navigate(`/queries/${r.fingerprint_id}`)}
                   >
                     <td className="px-5 py-3">

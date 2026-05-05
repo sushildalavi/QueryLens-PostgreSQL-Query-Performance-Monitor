@@ -12,11 +12,30 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
   }
 
+  body {
+    background-image:
+      radial-gradient(at 12% 8%, rgba(245, 158, 11, 0.06) 0, transparent 45%),
+      radial-gradient(at 88% 0%, rgba(99, 102, 241, 0.04) 0, transparent 50%),
+      radial-gradient(at 50% 100%, rgba(52, 211, 153, 0.03) 0, transparent 60%);
+    background-attachment: fixed;
+  }
+
+  /* subtle dot grid behind the page (very low opacity) */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 28px 28px;
+    background-position: 0 0;
+    z-index: 0;
+  }
+
   ::selection {
     background: rgba(245, 158, 11, 0.25);
   }
 
-  /* refined scrollbar */
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -32,11 +51,16 @@
   ::-webkit-scrollbar-thumb:hover {
     background: #3a3a42;
   }
+
+  *:focus-visible {
+    @apply outline-none ring-1 ring-accent/60 ring-offset-2 ring-offset-ink rounded;
+  }
 }
 
 @layer components {
   .surface {
-    @apply rounded-lg border border-edge bg-panel;
+    @apply rounded-lg border border-edge bg-panel relative;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
   }
   .surface-2 {
     @apply rounded-lg border border-edge bg-panel-2;
@@ -44,10 +68,60 @@
   .hairline {
     @apply border-edge;
   }
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.02) 0%,
+      rgba(255, 255, 255, 0.06) 50%,
+      rgba(255, 255, 255, 0.02) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+    border-radius: 4px;
+  }
+  .glass-header {
+    background: linear-gradient(
+      to bottom,
+      rgba(10, 10, 11, 0.85) 0%,
+      rgba(10, 10, 11, 0.65) 100%
+    );
+    backdrop-filter: saturate(140%) blur(8px);
+    -webkit-backdrop-filter: saturate(140%) blur(8px);
+  }
 }
 
 @layer utilities {
   .num {
     font-variant-numeric: tabular-nums;
   }
+  .stagger > * {
+    animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger > *:nth-child(2) { animation-delay: 60ms; }
+  .stagger > *:nth-child(3) { animation-delay: 120ms; }
+  .stagger > *:nth-child(4) { animation-delay: 180ms; }
+  .stagger > *:nth-child(5) { animation-delay: 240ms; }
+  .stagger > *:nth-child(6) { animation-delay: 300ms; }
+  .stagger > *:nth-child(7) { animation-delay: 360ms; }
+  .stagger > *:nth-child(8) { animation-delay: 420ms; }
+
+  .stagger-fast > * {
+    animation: fade-up 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .stagger-fast > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger-fast > *:nth-child(2) { animation-delay: 30ms; }
+  .stagger-fast > *:nth-child(3) { animation-delay: 60ms; }
+  .stagger-fast > *:nth-child(4) { animation-delay: 90ms; }
+  .stagger-fast > *:nth-child(5) { animation-delay: 120ms; }
+  .stagger-fast > *:nth-child(6) { animation-delay: 150ms; }
+  .stagger-fast > *:nth-child(7) { animation-delay: 180ms; }
+  .stagger-fast > *:nth-child(8) { animation-delay: 210ms; }
+  .stagger-fast > *:nth-child(9) { animation-delay: 240ms; }
+  .stagger-fast > *:nth-child(10) { animation-delay: 270ms; }
+}
+
+#root {
+  position: relative;
+  z-index: 1;
 }

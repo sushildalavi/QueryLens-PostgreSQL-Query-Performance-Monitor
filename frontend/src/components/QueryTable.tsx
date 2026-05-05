@@ -53,7 +53,8 @@ export function QueryTable({ rows, onRowClick }: Props) {
             <tr
               key={r.id}
               onClick={() => onRowClick(r.id)}
-              className={`group cursor-pointer transition-colors border-t border-edge ${
+              style={{ animationDelay: `${Math.min(i * 18, 240)}ms` }}
+              className={`group cursor-pointer transition-colors border-t border-edge animate-fade-up ${
                 i % 2 === 0 ? "bg-transparent" : "bg-panel-2/30"
               } hover:bg-accent/5`}
             >

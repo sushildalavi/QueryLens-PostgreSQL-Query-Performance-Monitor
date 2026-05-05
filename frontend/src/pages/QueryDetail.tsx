@@ -92,10 +92,10 @@ export function QueryDetail() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="animate-fade-up">
         <Link
           to="/"
-          className="inline-flex items-center gap-1.5 text-2xs text-muted hover:text-primary font-mono uppercase tracking-widest"
+          className="inline-flex items-center gap-1.5 text-2xs text-muted hover:text-primary font-mono uppercase tracking-widest transition-colors"
         >
           <ArrowLeft size={12} /> overview
         </Link>
@@ -104,14 +104,17 @@ export function QueryDetail() {
             <p className="text-2xs uppercase tracking-widest text-muted font-mono">
               query fingerprint
             </p>
-            <h1 className="mt-1 text-xl font-semibold text-primary tracking-tight flex items-center gap-2">
-              <Hash size={16} className="text-accent" />
+            <h1 className="mt-1 font-display text-2xl font-semibold text-primary tracking-tightest flex items-center gap-2.5">
+              <Hash size={18} className="text-accent" strokeWidth={2.5} />
               <span className="font-mono">{fp.fingerprint_hash.slice(0, 16)}</span>
             </h1>
           </div>
           {hasHighReg && (
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-bad/10 ring-1 ring-bad/30 text-bad text-xs font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-bad animate-pulse" />
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-bad/10 ring-1 ring-bad/30 text-bad text-xs font-medium animate-scale-in">
+              <span className="relative inline-grid place-items-center w-2 h-2">
+                <span className="absolute inset-0 rounded-full bg-bad animate-pulse-ring" />
+                <span className="relative w-1.5 h-1.5 rounded-full bg-bad" />
+              </span>
               high-severity regression detected
             </div>
           )}
@@ -128,7 +131,7 @@ export function QueryDetail() {
       </div>
 
       {latestMetric && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 stagger-fast">
           {[
             {
               label: "Mean exec",

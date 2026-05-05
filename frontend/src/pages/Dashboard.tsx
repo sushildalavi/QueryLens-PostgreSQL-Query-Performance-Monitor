@@ -26,7 +26,7 @@ export function Dashboard() {
     sort: "mean_latency_desc",
   });
   const { data: regressionsPage, isLoading: rLoading } = useRegressions({
-    limit: 10,
+    limit: 12,
   });
 
   const collectMutation = useCollect();
@@ -58,9 +58,12 @@ export function Dashboard() {
   const highRegs = regressions.filter((r) => r.severity === "high").length;
   const totalRegs = regressionsPage?.total ?? 0;
   const avgLatency = queries.length
-    ? (
-        queries.reduce((s, q) => s + (q.latest_mean_ms ?? 0), 0) / queries.length
-      ).toFixed(2)
+    ? Number(
+        (
+          queries.reduce((s, q) => s + (q.latest_mean_ms ?? 0), 0) /
+          queries.length
+        ).toFixed(2)
+      )
     : null;
 
   const latencyPoints: MetricPoint[] = queries
@@ -79,38 +82,51 @@ export function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 animate-fade-up">
         <div>
           <p className="text-2xs uppercase tracking-widest text-muted font-mono">
             overview
           </p>
-          <h1 className="text-2xl font-semibold text-primary tracking-tight mt-1">
-            Query performance, demystified.
+          <h1 className="font-display text-3xl font-semibold text-primary tracking-tightest mt-1.5 leading-tight">
+            Query performance,
+            <br className="sm:hidden" />{" "}
+            <span className="bg-gradient-to-r from-accent via-accent-soft to-accent bg-clip-text text-transparent">
+              demystified.
+            </span>
           </h1>
-          <p className="text-secondary text-sm mt-1.5 max-w-xl">
-            Live signal from <span className="font-mono text-primary">pg_stat_statements</span>{" "}
+          <p className="text-secondary text-sm mt-2 max-w-xl">
+            Live signal from{" "}
+            <span className="font-mono text-primary">pg_stat_statements</span>{" "}
             and <span className="font-mono text-primary">EXPLAIN</span>, scored by
-            deterministic regression rules.
+            deterministic regression rules. No magic.
           </p>
         </div>
         <button
           onClick={handleCollect}
           disabled={collectMutation.isPending}
-          className="inline-flex items-center gap-2 px-3.5 py-2 bg-accent text-ink rounded-md text-sm font-medium hover:bg-accent-soft disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-glow"
+          className="group inline-flex items-center gap-2 px-4 py-2 bg-accent text-ink rounded-md text-sm font-medium hover:bg-accent-soft active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-glow"
         >
-          <Play size={14} strokeWidth={2.5} className={collectMutation.isPending ? "animate-spin" : ""} />
+          <Play
+            size={14}
+            strokeWidth={2.75}
+            className={`${
+              collectMutation.isPending
+                ? "animate-spin"
+                : "group-active:scale-90 transition-transform"
+            }`}
+          />
           {collectMutation.isPending ? "Collecting…" : "Run collector"}
         </button>
       </div>
 
       {toast && (
-        <div className="surface-2 px-4 py-2.5 text-sm text-secondary font-mono flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+        <div className="surface-2 px-4 py-2.5 text-sm text-secondary font-mono flex items-center gap-2 animate-slide-down">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
           {toast}
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 stagger-fast">
         <MetricCard
           label="Tracked queries"
           value={totalQueries}
@@ -118,7 +134,7 @@ export function Dashboard() {
           hint="unique fingerprints"
         />
         <MetricCard
-          label="Slow (>100ms)"
+          label="Slow ( >100ms )"
           value={slowQueries}
           icon={Timer}
           tone={slowQueries > 0 ? "warn" : "default"}
@@ -135,19 +151,25 @@ export function Dashboard() {
           label="Avg mean latency"
           value={avgLatency}
           icon={Gauge}
-          hint="ms · across tracked"
+          unit="ms"
+          decimals={2}
+          hint="across tracked"
         />
       </div>
 
       {latencyPoints.length > 1 && (
-        <Section icon={TrendingUp} title="Latency landscape" hint="latest mean per fingerprint">
+        <Section
+          icon={TrendingUp}
+          title="Latency landscape"
+          hint="latest mean per fingerprint"
+        >
           <div className="px-5 pt-4 pb-2">
             <LatencyChart
               points={latencyPoints}
               dataKey="mean_exec_time_ms"
               color="#f59e0b"
               unit="ms"
-              height={200}
+              height={210}
             />
           </div>
         </Section>
@@ -156,7 +178,7 @@ export function Dashboard() {
       <Section
         icon={AlertTriangle}
         title="Recent regressions"
-        hint="newest first · click a row for context"
+        hint="newest first · click for query context"
         action={
           <button
             onClick={() => navigate("/regressions")}
@@ -166,20 +188,25 @@ export function Dashboard() {
           </button>
         }
       >
-        <div className="px-2 py-2">
+        <div className="p-2">
           {rLoading ? (
             <div className="space-y-2 p-2">
-              {[0, 1, 2].map((i) => (
+              {[0, 1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
           ) : regressions.length === 0 ? (
-            <div className="px-3 py-10 text-center text-sm text-muted">
-              No regressions yet — run the collector after a workload.
+            <div className="px-3 py-12 text-center">
+              <p className="text-sm text-muted">
+                No regressions yet — run the collector after a workload change.
+              </p>
+              <p className="text-2xs text-muted mt-2 font-mono">
+                tip: <span className="text-accent">make demo</span>
+              </p>
             </div>
           ) : (
-            <ul className="divide-y divide-edge">
-              {regressions.slice(0, 8).map((r) => (
+            <ul className="divide-y divide-edge stagger-fast">
+              {regressions.slice(0, 10).map((r) => (
                 <li
                   key={r.id}
                   className="flex items-start gap-3 px-3 py-2.5 cursor-pointer hover:bg-accent/5 rounded-md transition-colors"
@@ -202,10 +229,14 @@ export function Dashboard() {
         </div>
       </Section>
 
-      <Section icon={ListOrdered} title="Slowest queries" hint="ordered by mean exec time">
+      <Section
+        icon={ListOrdered}
+        title="Slowest queries"
+        hint="ordered by mean exec time · click a row to drill in"
+      >
         {qLoading ? (
           <div className="p-5 space-y-2">
-            {[0, 1, 2, 3].map((i) => (
+            {[0, 1, 2, 3, 4].map((i) => (
               <Skeleton key={i} className="h-9 w-full" />
             ))}
           </div>
@@ -216,4 +247,3 @@ export function Dashboard() {
     </div>
   );
 }
-
