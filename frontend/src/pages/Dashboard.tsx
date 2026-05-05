@@ -1,10 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  AlertTriangle,
+  Database,
+  Gauge,
+  ListOrdered,
+  Play,
+  Timer,
+  TrendingUp,
+} from "lucide-react";
 import { useCollect, useQueries, useRegressions } from "../api/hooks";
 import { LatencyChart } from "../components/LatencyChart";
 import { MetricCard } from "../components/MetricCard";
 import { QueryTable } from "../components/QueryTable";
 import { RegressionBadge } from "../components/RegressionBadge";
+import { Section, Skeleton } from "../components/Section";
 import type { MetricPoint } from "../types";
 
 export function Dashboard() {
@@ -25,14 +35,20 @@ export function Dashboard() {
     try {
       const r = await collectMutation.mutateAsync();
       setToast(
-        `Collected: ${r.fingerprints} queries, ${r.regressions} new regressions (${r.duration_ms.toFixed(0)}ms)`
+        `collected ${r.fingerprints} queries · ${r.regressions} new regression${
+          r.regressions === 1 ? "" : "s"
+        } · ${r.duration_ms.toFixed(0)}ms`
       );
-      setTimeout(() => setToast(null), 4000);
     } catch {
-      setToast("Collection failed — is the backend running?");
-      setTimeout(() => setToast(null), 4000);
+      setToast("collection failed — backend unreachable");
     }
   };
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const queries = queriesPage?.items ?? [];
   const regressions = regressionsPage?.items ?? [];
@@ -40,14 +56,13 @@ export function Dashboard() {
   const totalQueries = queriesPage?.total ?? 0;
   const slowQueries = queries.filter((q) => (q.latest_mean_ms ?? 0) > 100).length;
   const highRegs = regressions.filter((r) => r.severity === "high").length;
-  const avgLatency =
-    queries.length
-      ? (
-          queries.reduce((s, q) => s + (q.latest_mean_ms ?? 0), 0) / queries.length
-        ).toFixed(2)
-      : null;
+  const totalRegs = regressionsPage?.total ?? 0;
+  const avgLatency = queries.length
+    ? (
+        queries.reduce((s, q) => s + (q.latest_mean_ms ?? 0), 0) / queries.length
+      ).toFixed(2)
+    : null;
 
-  // Build a chart-friendly series from the queries list (use latest_mean_ms as single point)
   const latencyPoints: MetricPoint[] = queries
     .filter((q) => q.latest_mean_ms != null)
     .map((q) => ({
@@ -64,105 +79,141 @@ export function Dashboard() {
 
   return (
     <div className="space-y-8">
-      {/* header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            PostgreSQL query performance at a glance
+          <p className="text-2xs uppercase tracking-widest text-muted font-mono">
+            overview
+          </p>
+          <h1 className="text-2xl font-semibold text-primary tracking-tight mt-1">
+            Query performance, demystified.
+          </h1>
+          <p className="text-secondary text-sm mt-1.5 max-w-xl">
+            Live signal from <span className="font-mono text-primary">pg_stat_statements</span>{" "}
+            and <span className="font-mono text-primary">EXPLAIN</span>, scored by
+            deterministic regression rules.
           </p>
         </div>
         <button
           onClick={handleCollect}
           disabled={collectMutation.isPending}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white rounded text-sm font-medium transition-colors"
+          className="inline-flex items-center gap-2 px-3.5 py-2 bg-accent text-ink rounded-md text-sm font-medium hover:bg-accent-soft disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-glow"
         >
+          <Play size={14} strokeWidth={2.5} className={collectMutation.isPending ? "animate-spin" : ""} />
           {collectMutation.isPending ? "Collecting…" : "Run collector"}
         </button>
       </div>
 
-      {/* toast */}
       {toast && (
-        <div className="px-4 py-3 bg-slate-800 border border-slate-700 rounded text-sm text-slate-200">
+        <div className="surface-2 px-4 py-2.5 text-sm text-secondary font-mono flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent" />
           {toast}
         </div>
       )}
 
-      {/* metric cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Tracked queries" value={totalQueries} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard
-          title="Slow queries (>100ms)"
+          label="Tracked queries"
+          value={totalQueries}
+          icon={Database}
+          hint="unique fingerprints"
+        />
+        <MetricCard
+          label="Slow (>100ms)"
           value={slowQueries}
-          color={slowQueries > 0 ? "amber" : "default"}
+          icon={Timer}
+          tone={slowQueries > 0 ? "warn" : "default"}
+          hint="latest snapshot"
         />
         <MetricCard
-          title="High-severity regressions"
+          label="High-severity regs"
           value={highRegs}
-          color={highRegs > 0 ? "red" : "default"}
+          icon={AlertTriangle}
+          tone={highRegs > 0 ? "bad" : "default"}
+          hint={`${totalRegs} total tracked`}
         />
         <MetricCard
-          title="Avg mean latency (ms)"
+          label="Avg mean latency"
           value={avgLatency}
-          hint="across tracked queries"
+          icon={Gauge}
+          hint="ms · across tracked"
         />
       </div>
 
-      {/* overview chart */}
       {latencyPoints.length > 1 && (
-        <div className="bg-slate-900 rounded-lg p-5">
-          <h2 className="text-sm font-semibold text-slate-300 mb-3">
-            Latency snapshot (latest per query)
-          </h2>
-          <LatencyChart
-            points={latencyPoints}
-            dataKey="mean_exec_time_ms"
-            label="mean exec time (ms)"
-          />
-        </div>
+        <Section icon={TrendingUp} title="Latency landscape" hint="latest mean per fingerprint">
+          <div className="px-5 pt-4 pb-2">
+            <LatencyChart
+              points={latencyPoints}
+              dataKey="mean_exec_time_ms"
+              color="#f59e0b"
+              unit="ms"
+              height={200}
+            />
+          </div>
+        </Section>
       )}
 
-      {/* regressions feed */}
-      <div className="bg-slate-900 rounded-lg p-5">
-        <h2 className="text-sm font-semibold text-slate-300 mb-4">
-          Recent regressions
-        </h2>
-        {rLoading ? (
-          <p className="text-slate-500 text-sm">Loading…</p>
-        ) : regressions.length === 0 ? (
-          <p className="text-slate-500 text-sm">None yet.</p>
-        ) : (
-          <ul className="space-y-3">
-            {regressions.slice(0, 10).map((r) => (
-              <li
-                key={r.id}
-                className="flex items-start gap-3 cursor-pointer hover:bg-slate-800/50 rounded p-2 -mx-2 transition-colors"
-                onClick={() => navigate(`/queries/${r.fingerprint_id}`)}
-              >
-                <RegressionBadge severity={r.severity} className="mt-0.5 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm text-slate-200 truncate">{r.message}</p>
-                  <p className="text-xs text-slate-500 mt-0.5 font-mono truncate">
-                    {r.normalized_query.slice(0, 80)}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <Section
+        icon={AlertTriangle}
+        title="Recent regressions"
+        hint="newest first · click a row for context"
+        action={
+          <button
+            onClick={() => navigate("/regressions")}
+            className="text-2xs uppercase tracking-widest text-muted hover:text-secondary font-mono transition-colors"
+          >
+            view all →
+          </button>
+        }
+      >
+        <div className="px-2 py-2">
+          {rLoading ? (
+            <div className="space-y-2 p-2">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : regressions.length === 0 ? (
+            <div className="px-3 py-10 text-center text-sm text-muted">
+              No regressions yet — run the collector after a workload.
+            </div>
+          ) : (
+            <ul className="divide-y divide-edge">
+              {regressions.slice(0, 8).map((r) => (
+                <li
+                  key={r.id}
+                  className="flex items-start gap-3 px-3 py-2.5 cursor-pointer hover:bg-accent/5 rounded-md transition-colors"
+                  onClick={() => navigate(`/queries/${r.fingerprint_id}`)}
+                >
+                  <RegressionBadge severity={r.severity} className="mt-0.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-primary leading-snug">{r.message}</p>
+                    <p className="text-2xs text-muted mt-1 font-mono truncate">
+                      {r.normalized_query.slice(0, 110)}
+                    </p>
+                  </div>
+                  <span className="text-2xs text-muted font-mono whitespace-nowrap shrink-0">
+                    {r.regression_type}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </Section>
 
-      {/* slow queries table */}
-      <div className="bg-slate-900 rounded-lg p-5">
-        <h2 className="text-sm font-semibold text-slate-300 mb-4">
-          Slowest queries
-        </h2>
+      <Section icon={ListOrdered} title="Slowest queries" hint="ordered by mean exec time">
         {qLoading ? (
-          <p className="text-slate-500 text-sm">Loading…</p>
+          <div className="p-5 space-y-2">
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-9 w-full" />
+            ))}
+          </div>
         ) : (
           <QueryTable rows={queries} onRowClick={(id) => navigate(`/queries/${id}`)} />
         )}
-      </div>
+      </Section>
     </div>
   );
 }
+

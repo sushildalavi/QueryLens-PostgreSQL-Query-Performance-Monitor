@@ -1,21 +1,37 @@
+import { ChevronRight } from "lucide-react";
 import type { QuerySummary } from "../types";
-import { RegressionBadge } from "./RegressionBadge";
 
 interface Props {
   rows: QuerySummary[];
   onRowClick: (fid: string) => void;
 }
 
-function truncate(s: string, n = 80): string {
+function truncate(s: string, n = 90): string {
   return s.length > n ? s.slice(0, n) + "…" : s;
+}
+
+function relativeTime(iso: string): string {
+  const d = new Date(iso);
+  const diff = (Date.now() - d.getTime()) / 1000;
+  if (diff < 60) return `${Math.round(diff)}s ago`;
+  if (diff < 3600) return `${Math.round(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.round(diff / 3600)}h ago`;
+  return `${Math.round(diff / 86400)}d ago`;
+}
+
+function severityColor(ms: number | null | undefined): string {
+  if (ms == null) return "text-muted";
+  if (ms > 100) return "text-bad";
+  if (ms > 10) return "text-warn";
+  return "text-secondary";
 }
 
 export function QueryTable({ rows, onRowClick }: Props) {
   if (!rows.length) {
     return (
-      <p className="text-slate-500 text-sm py-4">
-        No queries tracked yet. Run the collector first.
-      </p>
+      <div className="px-4 py-10 text-center text-sm text-muted">
+        No queries tracked yet. Run the collector to populate this view.
+      </div>
     );
   }
 
@@ -23,39 +39,56 @@ export function QueryTable({ rows, onRowClick }: Props) {
     <div className="overflow-x-auto">
       <table className="min-w-full text-sm">
         <thead>
-          <tr className="text-left text-slate-400 border-b border-slate-800">
-            <th className="pb-2 pr-4 font-medium">Query</th>
-            <th className="pb-2 pr-4 font-medium text-right">Calls</th>
-            <th className="pb-2 pr-4 font-medium text-right">Mean ms</th>
-            <th className="pb-2 pr-4 font-medium text-center">Regressions</th>
-            <th className="pb-2 font-medium">Last seen</th>
+          <tr className="text-left text-2xs uppercase tracking-widest text-muted">
+            <th className="px-4 py-2.5 font-medium">Query</th>
+            <th className="px-4 py-2.5 font-medium text-right">Calls</th>
+            <th className="px-4 py-2.5 font-medium text-right">Mean ms</th>
+            <th className="px-4 py-2.5 font-medium text-center">Regs</th>
+            <th className="px-4 py-2.5 font-medium">Last seen</th>
+            <th className="px-2 py-2.5 w-6" />
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
+          {rows.map((r, i) => (
             <tr
               key={r.id}
               onClick={() => onRowClick(r.id)}
-              className="border-b border-slate-800 hover:bg-slate-800/50 cursor-pointer transition-colors"
+              className={`group cursor-pointer transition-colors border-t border-edge ${
+                i % 2 === 0 ? "bg-transparent" : "bg-panel-2/30"
+              } hover:bg-accent/5`}
             >
-              <td className="py-2 pr-4 font-mono text-xs text-slate-300 max-w-md">
-                {truncate(r.normalized_query)}
+              <td className="px-4 py-2.5 font-mono text-xs text-primary/90 max-w-md">
+                <span className="block truncate">
+                  {truncate(r.normalized_query)}
+                </span>
               </td>
-              <td className="py-2 pr-4 text-right text-slate-300">
+              <td className="px-4 py-2.5 text-right text-secondary num">
                 {r.latest_calls?.toLocaleString() ?? "—"}
               </td>
-              <td className="py-2 pr-4 text-right text-slate-300">
+              <td
+                className={`px-4 py-2.5 text-right num font-medium ${severityColor(
+                  r.latest_mean_ms
+                )}`}
+              >
                 {r.latest_mean_ms != null ? r.latest_mean_ms.toFixed(2) : "—"}
               </td>
-              <td className="py-2 pr-4 text-center">
+              <td className="px-4 py-2.5 text-center">
                 {r.regression_count > 0 ? (
-                  <span className="text-red-400 font-semibold">{r.regression_count}</span>
+                  <span className="inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 rounded bg-bad/10 ring-1 ring-bad/30 text-bad text-2xs font-mono num">
+                    {r.regression_count}
+                  </span>
                 ) : (
-                  <span className="text-slate-600">0</span>
+                  <span className="text-muted text-2xs num">0</span>
                 )}
               </td>
-              <td className="py-2 text-slate-500 text-xs">
-                {new Date(r.last_seen_at).toLocaleString()}
+              <td className="px-4 py-2.5 text-muted text-2xs whitespace-nowrap">
+                {relativeTime(r.last_seen_at)}
+              </td>
+              <td className="px-2 py-2.5 text-muted">
+                <ChevronRight
+                  size={14}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                />
               </td>
             </tr>
           ))}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronDown, ChevronRight, AlertOctagon, CheckCircle2 } from "lucide-react";
 import type { PlanSummary } from "../types";
 
 interface PlanNode {
@@ -16,58 +17,101 @@ interface Props {
   parsed: PlanSummary;
 }
 
-function NodeRow({
-  node,
-  depth,
-}: {
-  node: PlanNode;
-  depth: number;
-}) {
+const SEQ_NODES = new Set(["Seq Scan"]);
+const IDX_NODES = new Set(["Index Scan", "Index Only Scan", "Bitmap Index Scan"]);
+
+function nodeTone(t: string): "bad" | "ok" | "neutral" {
+  if (SEQ_NODES.has(t)) return "bad";
+  if (IDX_NODES.has(t)) return "ok";
+  return "neutral";
+}
+
+function NodeRow({ node, depth }: { node: PlanNode; depth: number }) {
   const [open, setOpen] = useState(true);
-  const hasChildren = node.Plans && node.Plans.length > 0;
-  const isSeq = node["Node Type"] === "Seq Scan";
-  const isIdx = ["Index Scan", "Index Only Scan", "Bitmap Index Scan"].includes(
-    node["Node Type"]
-  );
+  const hasChildren = !!(node.Plans && node.Plans.length);
+  const tone = nodeTone(node["Node Type"]);
+
+  const colorByTone = {
+    bad: "text-bad",
+    ok: "text-ok",
+    neutral: "text-secondary",
+  }[tone];
 
   return (
-    <div style={{ paddingLeft: depth * 16 }}>
+    <div style={{ paddingLeft: depth * 14 }}>
       <div
-        className={`flex items-start gap-2 py-1 text-sm ${hasChildren ? "cursor-pointer" : ""}`}
+        className={`flex items-center gap-2 py-1 group ${
+          hasChildren ? "cursor-pointer" : ""
+        }`}
         onClick={() => hasChildren && setOpen((o) => !o)}
       >
-        {hasChildren && (
-          <span className="text-slate-500 w-3 select-none">{open ? "▾" : "▸"}</span>
-        )}
-        {!hasChildren && <span className="w-3" />}
-        <span
-          className={`font-mono font-semibold ${
-            isSeq ? "text-red-400" : isIdx ? "text-green-400" : "text-blue-400"
-          }`}
-        >
+        <span className="w-3 text-muted">
+          {hasChildren ? (
+            open ? (
+              <ChevronDown size={12} />
+            ) : (
+              <ChevronRight size={12} />
+            )
+          ) : null}
+        </span>
+        <span className={`font-mono text-xs font-semibold ${colorByTone}`}>
           {node["Node Type"]}
         </span>
         {node["Relation Name"] && (
-          <span className="text-slate-300">on {node["Relation Name"]}</span>
-        )}
-        {node["Total Cost"] != null && (
-          <span className="text-slate-500 ml-auto text-xs">
-            cost={node["Total Cost"]?.toFixed(2)}
+          <span className="font-mono text-xs text-muted">
+            on <span className="text-secondary">{node["Relation Name"]}</span>
           </span>
         )}
+        <span className="ml-auto flex items-center gap-3 text-2xs font-mono text-muted">
+          {node["Plan Rows"] != null && (
+            <span>
+              est <span className="text-secondary num">{node["Plan Rows"]}</span>
+              {node["Actual Rows"] != null && (
+                <>
+                  {" "}
+                  → actual{" "}
+                  <span className="text-secondary num">{node["Actual Rows"]}</span>
+                </>
+              )}
+            </span>
+          )}
+          {node["Total Cost"] != null && (
+            <span>
+              cost{" "}
+              <span className="text-secondary num">
+                {node["Total Cost"]?.toFixed(2)}
+              </span>
+            </span>
+          )}
+        </span>
       </div>
-      {node["Plan Rows"] != null && (
-        <div style={{ paddingLeft: depth * 16 + 20 }} className="text-xs text-slate-500 -mt-1 mb-1">
-          est {node["Plan Rows"]} rows
-          {node["Actual Rows"] != null && ` → actual ${node["Actual Rows"]}`}
-        </div>
-      )}
       {open &&
         hasChildren &&
         node.Plans!.map((child, i) => (
           <NodeRow key={i} node={child} depth={depth + 1} />
         ))}
     </div>
+  );
+}
+
+function Pill({
+  children,
+  tone = "neutral",
+}: {
+  children: React.ReactNode;
+  tone?: "neutral" | "bad" | "ok";
+}) {
+  const cls = {
+    neutral: "bg-panel-2 text-secondary ring-edge",
+    bad: "bg-bad/10 text-bad ring-bad/30",
+    ok: "bg-ok/10 text-ok ring-ok/30",
+  }[tone];
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded ring-1 ${cls} text-2xs font-mono`}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -81,45 +125,35 @@ export function PlanViewer({ planJson, parsed }: Props) {
 
   return (
     <div>
-      {/* parsed facts pills */}
       <div className="flex flex-wrap gap-2 mb-4">
-        {parsed.top_node_type && (
-          <span className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs font-mono">
-            {parsed.top_node_type}
-          </span>
-        )}
+        {parsed.top_node_type && <Pill>{parsed.top_node_type}</Pill>}
         {parsed.uses_seq_scan && (
-          <span className="px-2 py-1 bg-red-900/60 text-red-300 rounded text-xs">Seq Scan</span>
+          <Pill tone="bad">
+            <AlertOctagon size={11} /> seq scan
+          </Pill>
         )}
         {parsed.uses_index_scan && (
-          <span className="px-2 py-1 bg-green-900/60 text-green-300 rounded text-xs">
-            Index Scan
-          </span>
+          <Pill tone="ok">
+            <CheckCircle2 size={11} /> index scan
+          </Pill>
         )}
         {parsed.estimated_total_cost != null && (
-          <span className="px-2 py-1 bg-slate-800 text-slate-400 rounded text-xs">
-            cost {parsed.estimated_total_cost.toFixed(2)}
-          </span>
+          <Pill>cost {parsed.estimated_total_cost.toFixed(2)}</Pill>
         )}
         {parsed.estimated_rows != null && (
-          <span className="px-2 py-1 bg-slate-800 text-slate-400 rounded text-xs">
-            est {parsed.estimated_rows} rows
-          </span>
+          <Pill>est {parsed.estimated_rows} rows</Pill>
         )}
         {parsed.actual_rows != null && (
-          <span className="px-2 py-1 bg-slate-800 text-slate-400 rounded text-xs">
-            actual {parsed.actual_rows} rows
-          </span>
+          <Pill>actual {parsed.actual_rows} rows</Pill>
         )}
       </div>
 
-      {/* tree */}
       {root ? (
-        <div className="bg-slate-900 rounded p-3 overflow-x-auto">
+        <div className="surface-2 p-3 overflow-x-auto">
           <NodeRow node={root} depth={0} />
         </div>
       ) : (
-        <p className="text-slate-500 text-sm">Plan data unavailable.</p>
+        <p className="text-muted text-sm">Plan data unavailable.</p>
       )}
     </div>
   );

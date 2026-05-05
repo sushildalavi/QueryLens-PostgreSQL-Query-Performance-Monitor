@@ -3,17 +3,19 @@ interface Props {
   className?: string;
 }
 
-const classes = {
-  high: "bg-red-900 text-red-300 border border-red-600",
-  medium: "bg-amber-900 text-amber-300 border border-amber-600",
-  low: "bg-slate-700 text-slate-300 border border-slate-500",
+const styles = {
+  high: { dot: "bg-bad", text: "text-bad", ring: "ring-bad/30 bg-bad/10" },
+  medium: { dot: "bg-warn", text: "text-warn", ring: "ring-warn/30 bg-warn/10" },
+  low: { dot: "bg-secondary", text: "text-secondary", ring: "ring-edge bg-panel-2" },
 };
 
 export function RegressionBadge({ severity, className = "" }: Props) {
+  const s = styles[severity];
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase ${classes[severity]} ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded ring-1 ${s.ring} ${s.text} text-2xs font-mono uppercase tracking-wider ${className}`}
     >
+      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
       {severity}
     </span>
   );

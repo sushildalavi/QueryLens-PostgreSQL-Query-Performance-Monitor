@@ -1,25 +1,49 @@
+import type { LucideIcon } from "lucide-react";
+
 interface Props {
-  title: string;
+  label: string;
   value: string | number | null | undefined;
   hint?: string;
-  color?: "default" | "red" | "amber" | "green";
+  tone?: "default" | "warn" | "bad" | "ok";
+  icon?: LucideIcon;
+  delta?: { value: string; direction: "up" | "down" | "flat" };
 }
 
-const colorMap = {
-  default: "border-slate-700",
-  red: "border-red-600",
-  amber: "border-amber-500",
-  green: "border-green-600",
+const toneAccent = {
+  default: "text-secondary",
+  warn: "text-warn",
+  bad: "text-bad",
+  ok: "text-ok",
 };
 
-export function MetricCard({ title, value, hint, color = "default" }: Props) {
+export function MetricCard({ label, value, hint, tone = "default", icon: Icon, delta }: Props) {
   return (
-    <div className={`rounded-lg bg-slate-900 border-l-4 ${colorMap[color]} p-5`}>
-      <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">{title}</p>
-      <p className="mt-2 text-3xl font-bold text-white">
-        {value ?? <span className="text-slate-500">—</span>}
-      </p>
-      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+    <div className="surface p-4 transition-colors hover:border-edge-bright">
+      <div className="flex items-center justify-between">
+        <span className="text-2xs uppercase tracking-widest text-muted font-medium">
+          {label}
+        </span>
+        {Icon && <Icon size={14} className={toneAccent[tone]} strokeWidth={2} />}
+      </div>
+      <div className="mt-3 flex items-baseline gap-2">
+        <span className="text-3xl font-semibold text-primary tracking-tight num">
+          {value ?? <span className="text-muted">—</span>}
+        </span>
+        {delta && (
+          <span
+            className={`text-2xs font-mono ${
+              delta.direction === "up"
+                ? "text-bad"
+                : delta.direction === "down"
+                ? "text-ok"
+                : "text-muted"
+            }`}
+          >
+            {delta.value}
+          </span>
+        )}
+      </div>
+      {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
     </div>
   );
 }

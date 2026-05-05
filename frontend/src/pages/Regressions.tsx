@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRegressions } from "../api/hooks";
 import { RegressionBadge } from "../components/RegressionBadge";
+import { Section, Skeleton } from "../components/Section";
 
 type Severity = "all" | "high" | "medium" | "low";
+
+const SEVERITIES: Severity[] = ["all", "high", "medium", "low"];
 
 export function Regressions() {
   const navigate = useNavigate();
@@ -20,96 +24,120 @@ export function Regressions() {
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
 
-  const filterBtn = (s: Severity) => (
-    <button
-      key={s}
-      onClick={() => { setSeverity(s); setPage(0); }}
-      className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-        severity === s
-          ? "bg-indigo-600 text-white"
-          : "bg-slate-800 text-slate-400 hover:text-white"
-      }`}
-    >
-      {s.charAt(0).toUpperCase() + s.slice(1)}
-    </button>
-  );
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Regressions</h1>
-          <p className="text-slate-400 text-sm mt-1">{total} total detected</p>
-        </div>
-        <div className="flex gap-2">
-          {(["all", "high", "medium", "low"] as Severity[]).map(filterBtn)}
-        </div>
-      </div>
-
-      <div className="bg-slate-900 rounded-lg overflow-hidden">
-        {isLoading ? (
-          <p className="p-6 text-slate-500 text-sm">Loading…</p>
-        ) : items.length === 0 ? (
-          <p className="p-6 text-slate-500 text-sm">
-            No regressions yet. Run the collector after the demo workload.
+          <p className="text-2xs uppercase tracking-widest text-muted font-mono">
+            regression feed
           </p>
-        ) : (
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="text-left text-slate-400 border-b border-slate-800">
-                <th className="px-4 py-3 font-medium">Severity</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium">Query</th>
-                <th className="px-4 py-3 font-medium">Message</th>
-                <th className="px-4 py-3 font-medium">Detected at</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((r) => (
-                <tr
-                  key={r.id}
-                  className="border-b border-slate-800 hover:bg-slate-800/50 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/queries/${r.fingerprint_id}`)}
-                >
-                  <td className="px-4 py-3">
-                    <RegressionBadge severity={r.severity} />
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-400">
-                    {r.regression_type}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-300 max-w-xs truncate">
-                    {r.normalized_query.slice(0, 70)}
-                  </td>
-                  <td className="px-4 py-3 text-slate-300 max-w-sm">{r.message}</td>
-                  <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
-                    {new Date(r.created_at).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+          <h1 className="text-2xl font-semibold text-primary tracking-tight mt-1">
+            Things that got slower.
+          </h1>
+          <p className="text-secondary text-sm mt-1.5">
+            <span className="num text-primary">{total.toLocaleString()}</span>{" "}
+            total · filtered by deterministic rules over consecutive collector runs.
+          </p>
+        </div>
+        <div className="flex gap-1 p-1 bg-panel-2 rounded-md ring-1 ring-edge">
+          {SEVERITIES.map((s) => (
+            <button
+              key={s}
+              onClick={() => {
+                setSeverity(s);
+                setPage(0);
+              }}
+              className={`px-3 py-1.5 rounded text-2xs font-mono uppercase tracking-widest transition-colors ${
+                severity === s
+                  ? "bg-ink text-primary ring-1 ring-edge"
+                  : "text-muted hover:text-secondary"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* pagination */}
+      <Section icon={AlertTriangle} title="Detections" hint="newest first">
+        {isLoading ? (
+          <div className="p-5 space-y-2">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : items.length === 0 ? (
+          <div className="px-5 py-12 text-center">
+            <p className="text-sm text-muted">
+              No regressions match this filter.
+            </p>
+            <p className="text-2xs text-muted mt-2 font-mono">
+              try running <span className="text-accent">make demo</span> to seed examples.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-2xs uppercase tracking-widest text-muted">
+                  <th className="px-5 py-2.5 font-medium">Severity</th>
+                  <th className="px-4 py-2.5 font-medium">Type</th>
+                  <th className="px-4 py-2.5 font-medium">Query</th>
+                  <th className="px-4 py-2.5 font-medium">Message</th>
+                  <th className="px-4 py-2.5 font-medium">Detected</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((r, i) => (
+                  <tr
+                    key={r.id}
+                    className={`group cursor-pointer border-t border-edge transition-colors ${
+                      i % 2 === 0 ? "bg-transparent" : "bg-panel-2/30"
+                    } hover:bg-accent/5`}
+                    onClick={() => navigate(`/queries/${r.fingerprint_id}`)}
+                  >
+                    <td className="px-5 py-3">
+                      <RegressionBadge severity={r.severity} />
+                    </td>
+                    <td className="px-4 py-3 font-mono text-2xs text-secondary whitespace-nowrap">
+                      {r.regression_type}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-2xs text-primary/90 max-w-xs truncate">
+                      {r.normalized_query.slice(0, 80)}
+                    </td>
+                    <td className="px-4 py-3 text-secondary max-w-sm">
+                      {r.message}
+                    </td>
+                    <td className="px-4 py-3 text-muted text-2xs whitespace-nowrap font-mono">
+                      {new Date(r.created_at).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Section>
+
       {total > limit && (
-        <div className="flex items-center gap-4 justify-end text-sm">
+        <div className="flex items-center gap-2 justify-end text-xs text-muted">
+          <span className="font-mono">
+            {page * limit + 1}–{Math.min((page + 1) * limit, total)} of{" "}
+            <span className="num text-secondary">{total}</span>
+          </span>
           <button
             disabled={page === 0}
             onClick={() => setPage((p) => p - 1)}
-            className="px-3 py-1.5 bg-slate-800 text-slate-400 rounded disabled:opacity-40 hover:text-white transition-colors"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 surface-2 hover:border-edge-bright disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            Previous
+            <ChevronLeft size={12} /> prev
           </button>
-          <span className="text-slate-500">
-            {page * limit + 1}–{Math.min((page + 1) * limit, total)} of {total}
-          </span>
           <button
             disabled={(page + 1) * limit >= total}
             onClick={() => setPage((p) => p + 1)}
-            className="px-3 py-1.5 bg-slate-800 text-slate-400 rounded disabled:opacity-40 hover:text-white transition-colors"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 surface-2 hover:border-edge-bright disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            Next
+            next <ChevronRight size={12} />
           </button>
         </div>
       )}
