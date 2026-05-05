@@ -182,6 +182,22 @@ WHERE
     AND query NOT ILIKE '%information_schema%'
     AND query NOT ILIKE '%PREPARE%'
     AND query NOT ILIKE '%EXPLAIN%'
+    -- exclude SQLAlchemy / driver bookkeeping
+    AND query NOT ILIKE '%savepoint%'
+    AND query NOT ILIKE 'rollback%'
+    AND query NOT ILIKE 'commit%'
+    AND query NOT ILIKE 'begin%'
+    AND query NOT ILIKE 'set %'
+    AND query NOT ILIKE 'show %'
+    AND query NOT ILIKE 'discard %'
+    AND query NOT ILIKE 'deallocate%'
+    -- exclude DDL noise from migrations/seed
+    AND query NOT ILIKE 'create %'
+    AND query NOT ILIKE 'drop %'
+    AND query NOT ILIKE 'alter %'
+    AND query NOT ILIKE 'truncate %'
+    AND query NOT ILIKE 'analyze %'
+    AND query NOT ILIKE 'vacuum%'
     AND mean_exec_time >= :min_mean
 ORDER BY mean_exec_time DESC
 """
