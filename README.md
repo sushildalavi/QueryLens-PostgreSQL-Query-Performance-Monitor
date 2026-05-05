@@ -21,30 +21,144 @@ A developer tool that collects PostgreSQL query performance metrics, fingerprint
 
 ## Architecture
 
-```
-demo workload ──► Postgres (pg_stat_statements + demo + querylens schemas)
-                         │
-                         ▼
-                 Python collector
-       ┌──────────┬──────┴──────┬──────────────┐
-       ▼          ▼             ▼              ▼
- fingerprint   metrics       EXPLAIN      regression
-                upsert        parse         detector
-                         │
-                         ▼
-                   QueryLens DB
-                         │
-                         ▼
-                  FastAPI API ──► (optional) LLM
-                         │
-                         ▼
-                React + Vite UI
+One Postgres instance hosts three schemas. The Python backend reads `pg_stat_statements`, fingerprints, snapshots, and runs deterministic rules. The React UI talks to the FastAPI layer over `/api/*`.
+
+```mermaid
+flowchart LR
+    subgraph host["Local machine · docker compose"]
+      subgraph db["Postgres 16 (port 5434)"]
+        pgss["pg_stat_statements<br/><i>extension</i>"]
+        demo["demo schema<br/>users · orders · products<br/>order_items · events"]
+        ql["querylens schema<br/>query_fingerprints · query_metrics<br/>query_plans · query_regressions<br/>query_reports"]
+      end
+      subgraph backend["FastAPI backend (port 8765)"]
+        api["REST API<br/>/api/queries · /api/regressions<br/>/api/collect/run · /api/reports"]
+        coll["Collector<br/><i>app.core.collector</i>"]
+        rep["Report generator<br/><i>app.core.report_generator</i>"]
+      end
+      subgraph workload["Demo workload"]
+        wl["app.demo.workload<br/>15 query templates"]
+      end
+      ui["React + Vite UI<br/>(port 3030)"]
+    end
+    llm[("Optional LLM<br/>OpenAI / Groq / Ollama")]:::ext
+
+    wl -- "exec SQL" --> demo
+    demo -. "stats" .-> pgss
+    coll -- "SELECT ... FROM pg_stat_statements" --> pgss
+    coll -- "EXPLAIN (FORMAT JSON)" --> demo
+    coll -- "INSERT fingerprints / metrics<br/>plans / regressions" --> ql
+    api -- "SELECT" --> ql
+    rep -- "findings" --> llm
+    rep -- "stored report" --> ql
+    ui -- "fetch /api/*" --> api
+
+    classDef ext fill:#0a0a0b,stroke:#3a3a42,stroke-dasharray:3 3,color:#a0a0a8;
 ```
 
 **One Postgres instance, three schemas:**
 - `public` — `pg_stat_statements` extension
 - `demo` — workload tables (`users`, `orders`, `products`, `order_items`, `events`)
 - `querylens` — metadata (`query_fingerprints`, `query_metrics`, `query_plans`, `query_regressions`, `query_reports`)
+
+### Collector pipeline
+
+What happens during a single `make collect` (or `POST /api/collect/run`):
+
+```mermaid
+flowchart TD
+    s["Start: run_collection()"]
+    q["SELECT * FROM pg_stat_statements<br/>WHERE noise filters AND mean_exec_time >= MIN_MEAN_MS<br/>ORDER BY mean_exec_time DESC"]
+    loop{"For each row"}
+    fp["fingerprint(sql)<br/>strip comments → normalize<br/>literals/$N → SHA-256"]
+    upsert["Upsert query_fingerprints"]
+    metric["Insert query_metrics<br/>(snapshot of counters)"]
+    safe{"_is_safe_select?<br/>(SELECT/WITH, no DML)"}
+    explain["_run_explain()<br/>PREPARE + EXPLAIN EXECUTE if $N<br/>else EXPLAIN directly"]
+    plan["Insert query_plans<br/>(parsed top-node, seq/idx, cost, rows)"]
+    diff["detect_regressions(<br/>prev_metric, new_metric,<br/>prev_plan, new_plan)"]
+    persist["Insert query_regressions<br/>(severity, type, message)"]
+    done["commit · return counters"]
+
+    s --> q --> loop
+    loop -- next row --> fp
+    fp --> upsert --> metric --> safe
+    safe -- yes --> explain --> plan --> diff
+    safe -- no --> diff
+    diff --> persist --> loop
+    loop -- "no more rows" --> done
+
+    style s fill:#f59e0b,color:#0a0a0b,stroke:#f59e0b
+    style done fill:#34d399,color:#0a0a0b,stroke:#34d399
+    style safe fill:#16161a,stroke:#3a3a42,color:#e7e7ea
+    style loop fill:#16161a,stroke:#3a3a42,color:#e7e7ea
+```
+
+### Regression rules
+
+`detect_regressions()` runs every rule against `(prev, new)` snapshots. Latency rules pick the highest matching severity (`severe_latency_spike` suppresses `latency_spike` and `call_spike`).
+
+```mermaid
+flowchart LR
+    snap["(prev_metric, new_metric,<br/>prev_plan, new_plan)"]:::input
+
+    snap --> r1{"new.mean / prev.mean<br/>≥ 3.0?"}
+    r1 -- yes --> sev["severe_latency_spike<br/><b>HIGH</b>"]:::high
+    r1 -- no --> r2{"new.mean / prev.mean<br/>≥ 1.5?"}
+    r2 -- yes --> lat["latency_spike<br/><b>MEDIUM</b>"]:::med
+
+    snap --> r3{"prev_plan.idx_scan AND<br/>new_plan.seq_scan AND<br/>NOT new_plan.idx_scan?"}
+    r3 -- yes --> idx["index_scan_to_seq_scan<br/><b>HIGH</b>"]:::high
+
+    snap --> r4{"actual_rows / estimated<br/>> 10?"}
+    r4 -- yes --> row["row_estimate_mismatch<br/><b>MEDIUM</b>"]:::med
+
+    snap --> r5{"Δ temp_blks_written<br/>> 1000?"}
+    r5 -- yes --> tmp["temp_spill<br/><b>MEDIUM</b>"]:::med
+
+    snap --> r6{"new.calls / prev.calls<br/>≥ 2.0 AND not severe?"}
+    r6 -- yes --> call["call_spike<br/><b>LOW</b>"]:::low
+
+    snap --> r7{"new.cost / prev.cost<br/>≥ 2.0?"}
+    r7 -- yes --> cost["cost_spike<br/><b>MEDIUM</b>"]:::med
+
+    classDef input fill:#16161a,stroke:#3a3a42,color:#e7e7ea;
+    classDef high fill:#3b1f1f,stroke:#f87171,color:#f87171;
+    classDef med fill:#3b2f1f,stroke:#fbbf24,color:#fbbf24;
+    classDef low fill:#1f1f24,stroke:#6b6b75,color:#a0a0a8;
+```
+
+### Demo lifecycle
+
+`make demo` is reproducible — it always lands the dashboard with the same regressions detected.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Make as make demo
+    participant DB as Postgres
+    participant W as Workload
+    participant C as Collector
+    Make->>DB: alembic upgrade head
+    Make->>DB: seed_data (idempotent · ~400k rows)
+    Make->>DB: pg_stat_statements_reset()
+    Make->>DB: TRUNCATE querylens.* CASCADE
+    Make->>DB: CREATE INDEX orders_user_id_idx (if missing)
+    Make->>W: workload --iterations 400 --no-drop-index
+    W->>DB: 400 queries (15 templates, weighted)
+    Make->>C: run_collection()  ← baseline snapshot
+    C->>DB: INSERT metrics + plans (15+ fingerprints)
+    Note over Make: --- baseline collected ---
+    Make->>W: workload --iterations 1500 (drop_index=True)
+    W->>DB: 750 queries (index present)
+    W->>DB: DROP INDEX demo.orders_user_id_idx
+    W->>DB: 750 queries (no index → seq scan)
+    Make->>C: run_collection()  ← post-drop snapshot
+    C->>C: detect_regressions() per fingerprint
+    C->>DB: INSERT query_regressions (high/medium/low)
+    Note over Make: --- regression snapshot collected ---
+    Make-->>Make: open http://localhost:3030
+```
 
 ---
 
