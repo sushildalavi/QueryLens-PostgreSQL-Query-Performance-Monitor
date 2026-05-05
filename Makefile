@@ -22,7 +22,7 @@ demo: up
 	docker compose exec backend python -m app.demo.workload --iterations 800
 	docker compose exec backend python -m app.core.collector
 	@echo "--- regression snapshot collected ---"
-	@echo "open http://localhost:5173"
+	@echo "open http://localhost:3030"
 
 seed:
 	docker compose exec backend python -m app.demo.seed_data

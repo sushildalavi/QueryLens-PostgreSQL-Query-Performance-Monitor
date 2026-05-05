@@ -54,20 +54,20 @@ Requirements: **Docker** and **Docker Compose**.
 git clone https://github.com/sushildalavi/QueryLens-PostgreSQL-Query-Performance-Monitor.git
 cd QueryLens-PostgreSQL-Query-Performance-Monitor
 
-cp .env.example .env       # review defaults, no changes needed for local dev
+# .env is already committed — edit it only if you want to override defaults
 
 docker compose up -d       # starts db + backend + frontend
 make demo                  # seeds data, runs workload, runs collector twice
 ```
 
-Open **http://localhost:5173** — you should see regressions in the dashboard.
+Open **http://localhost:3030** — you should see regressions in the dashboard.
 
 To run the collector on-demand:
 
 ```bash
 make collect
 # or
-curl -X POST http://localhost:8000/api/collect/run | jq
+curl -X POST http://localhost:8765/api/collect/run | jq
 ```
 
 ---
@@ -161,23 +161,23 @@ make collect     # just run the collector
 
 ## API reference
 
-Full Swagger UI at **http://localhost:8000/docs**
+Full Swagger UI at **http://localhost:8765/docs**
 
 ```bash
 # health
-curl localhost:8000/health
+curl localhost:8765/health
 
 # list slow queries
-curl "localhost:8000/api/queries?sort=mean_latency_desc&limit=10" | jq
+curl "localhost:8765/api/queries?sort=mean_latency_desc&limit=10" | jq
 
 # list regressions
-curl "localhost:8000/api/regressions?severity=high" | jq
+curl "localhost:8765/api/regressions?severity=high" | jq
 
 # trigger collection
-curl -X POST localhost:8000/api/collect/run | jq
+curl -X POST localhost:8765/api/collect/run | jq
 
 # generate report for a query
-curl -X POST "localhost:8000/api/reports/<fingerprint_id>/generate" | jq
+curl -X POST "localhost:8765/api/reports/<fingerprint_id>/generate" | jq
 ```
 
 ---
