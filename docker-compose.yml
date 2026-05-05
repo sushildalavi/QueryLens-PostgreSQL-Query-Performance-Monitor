@@ -14,7 +14,7 @@ services:
       - ./infra/initdb:/docker-entrypoint-initdb.d:ro
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      - "5434:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U querylens -d querylens"]
       interval: 3s
@@ -28,7 +28,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "8001:8000"
+      - "8765:8000"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend:/app
@@ -36,7 +36,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "5173:80"
+      - "3030:80"
     depends_on:
       - backend
 
