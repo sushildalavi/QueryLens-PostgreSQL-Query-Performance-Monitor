@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
+  ChevronRight,
   Database,
   Gauge,
   ListOrdered,
   Play,
+  Sparkles,
   Timer,
   TrendingUp,
 } from "lucide-react";
@@ -14,8 +16,19 @@ import { LatencyChart } from "../components/LatencyChart";
 import { MetricCard } from "../components/MetricCard";
 import { QueryTable } from "../components/QueryTable";
 import { RegressionBadge } from "../components/RegressionBadge";
+import { RegressionTypeIcon, regressionMeta } from "../components/RegressionTypeIcon";
 import { Section, Skeleton } from "../components/Section";
-import type { MetricPoint } from "../types";
+import { SeverityBar } from "../components/SeverityBar";
+import { Spotlight } from "../components/Spotlight";
+import type { MetricPoint, RegressionListItem } from "../types";
+
+function topRegressionTypes(items: RegressionListItem[]) {
+  const counts = new Map<string, number>();
+  for (const r of items) counts.set(r.regression_type, (counts.get(r.regression_type) ?? 0) + 1);
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+}
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -25,9 +38,7 @@ export function Dashboard() {
     limit: 50,
     sort: "mean_latency_desc",
   });
-  const { data: regressionsPage, isLoading: rLoading } = useRegressions({
-    limit: 12,
-  });
+  const { data: regAll } = useRegressions({ limit: 100 });
 
   const collectMutation = useCollect();
 
@@ -51,12 +62,18 @@ export function Dashboard() {
   }, [toast]);
 
   const queries = queriesPage?.items ?? [];
-  const regressions = regressionsPage?.items ?? [];
+  const regressions = regAll?.items ?? [];
 
   const totalQueries = queriesPage?.total ?? 0;
   const slowQueries = queries.filter((q) => (q.latest_mean_ms ?? 0) > 100).length;
-  const highRegs = regressions.filter((r) => r.severity === "high").length;
-  const totalRegs = regressionsPage?.total ?? 0;
+  const totalRegs = regAll?.total ?? 0;
+
+  const counts = useMemo(() => {
+    const c = { high: 0, medium: 0, low: 0 };
+    for (const r of regressions) c[r.severity] = (c[r.severity] ?? 0) + 1;
+    return c;
+  }, [regressions]);
+
   const avgLatency = queries.length
     ? Number(
         (
@@ -80,6 +97,9 @@ export function Dashboard() {
     }))
     .sort((a, b) => a.captured_at.localeCompare(b.captured_at));
 
+  const topTypes = topRegressionTypes(regressions);
+  const topTypeMax = Math.max(1, ...topTypes.map(([, n]) => n));
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 animate-fade-up">
@@ -87,14 +107,14 @@ export function Dashboard() {
           <p className="text-2xs uppercase tracking-widest text-muted font-mono">
             overview
           </p>
-          <h1 className="font-display text-3xl font-semibold text-primary tracking-tightest mt-1.5 leading-tight">
+          <h1 className="font-display text-3xl sm:text-4xl font-semibold text-primary tracking-tightest mt-1.5 leading-[1.05]">
             Query performance,
             <br className="sm:hidden" />{" "}
             <span className="bg-gradient-to-r from-accent via-accent-soft to-accent bg-clip-text text-transparent">
               demystified.
             </span>
           </h1>
-          <p className="text-secondary text-sm mt-2 max-w-xl">
+          <p className="text-secondary text-sm mt-2.5 max-w-xl leading-relaxed">
             Live signal from{" "}
             <span className="font-mono text-primary">pg_stat_statements</span>{" "}
             and <span className="font-mono text-primary">EXPLAIN</span>, scored by
@@ -109,11 +129,11 @@ export function Dashboard() {
           <Play
             size={14}
             strokeWidth={2.75}
-            className={`${
+            className={
               collectMutation.isPending
                 ? "animate-spin"
                 : "group-active:scale-90 transition-transform"
-            }`}
+            }
           />
           {collectMutation.isPending ? "Collecting…" : "Run collector"}
         </button>
@@ -142,9 +162,9 @@ export function Dashboard() {
         />
         <MetricCard
           label="High-severity regs"
-          value={highRegs}
+          value={counts.high}
           icon={AlertTriangle}
-          tone={highRegs > 0 ? "bad" : "default"}
+          tone={counts.high > 0 ? "bad" : "default"}
           hint={`${totalRegs} total tracked`}
         />
         <MetricCard
@@ -157,23 +177,93 @@ export function Dashboard() {
         />
       </div>
 
-      {latencyPoints.length > 1 && (
-        <Section
-          icon={TrendingUp}
-          title="Latency landscape"
-          hint="latest mean per fingerprint"
-        >
-          <div className="px-5 pt-4 pb-2">
-            <LatencyChart
-              points={latencyPoints}
-              dataKey="mean_exec_time_ms"
-              color="#f59e0b"
-              unit="ms"
-              height={210}
-            />
+      <div className="grid lg:grid-cols-3 gap-3">
+        {latencyPoints.length > 1 && (
+          <div className="lg:col-span-2">
+            <Section
+              icon={TrendingUp}
+              title="Latency landscape"
+              hint="latest mean per fingerprint"
+            >
+              <div className="px-5 pt-4 pb-2">
+                <LatencyChart
+                  points={latencyPoints}
+                  dataKey="mean_exec_time_ms"
+                  color="#f59e0b"
+                  unit="ms"
+                  height={220}
+                />
+              </div>
+            </Section>
           </div>
-        </Section>
-      )}
+        )}
+
+        <Spotlight className="surface animate-fade-up" glow="rgba(245,158,11,0.14)">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-bad/0 via-bad/30 to-bad/0 opacity-60" />
+          <div className="relative p-5">
+            <div className="flex items-center gap-2.5">
+              <span className="grid place-items-center w-6 h-6 rounded bg-panel-2 ring-1 ring-edge">
+                <Sparkles size={13} className="text-secondary" />
+              </span>
+              <h2 className="text-sm font-semibold text-primary tracking-tight">
+                Severity breakdown
+              </h2>
+            </div>
+            <div className="mt-4">
+              <SeverityBar high={counts.high} medium={counts.medium} low={counts.low} />
+            </div>
+            <div className="mt-5 space-y-2">
+              <p className="text-2xs uppercase tracking-widest text-muted font-mono">
+                top regression types
+              </p>
+              {topTypes.length === 0 ? (
+                <p className="text-xs text-muted">none yet — run the collector.</p>
+              ) : (
+                <ul className="space-y-1.5 stagger-fast">
+                  {topTypes.map(([type, n]) => {
+                    const meta = regressionMeta(type);
+                    const w = (n / topTypeMax) * 100;
+                    return (
+                      <li
+                        key={type}
+                        className="group flex items-center gap-2 cursor-pointer"
+                        onClick={() => navigate("/regressions")}
+                      >
+                        <RegressionTypeIcon type={type} size={12} />
+                        <span className="text-xs text-secondary group-hover:text-primary transition-colors truncate flex-1">
+                          {meta.label}
+                        </span>
+                        <span className="relative h-1 w-16 bg-panel-2 rounded overflow-hidden shrink-0">
+                          <span
+                            className={`absolute left-0 top-0 h-full ${
+                              meta.tone === "text-bad"
+                                ? "bg-bad"
+                                : meta.tone === "text-warn"
+                                ? "bg-warn"
+                                : "bg-secondary/50"
+                            } transition-all duration-700`}
+                            style={{ width: `${w}%` }}
+                          />
+                        </span>
+                        <span className="text-2xs font-mono text-muted num w-6 text-right">
+                          {n}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+            <button
+              onClick={() => navigate("/regressions")}
+              className="mt-5 w-full inline-flex items-center justify-center gap-1 px-3 py-1.5 surface-2 hover:border-edge-bright text-xs text-secondary hover:text-primary transition-colors group"
+            >
+              browse all regressions
+              <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </div>
+        </Spotlight>
+      </div>
 
       <Section
         icon={AlertTriangle}
@@ -189,7 +279,7 @@ export function Dashboard() {
         }
       >
         <div className="p-2">
-          {rLoading ? (
+          {!regAll ? (
             <div className="space-y-2 p-2">
               {[0, 1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-12 w-full" />
@@ -206,24 +296,34 @@ export function Dashboard() {
             </div>
           ) : (
             <ul className="divide-y divide-edge stagger-fast">
-              {regressions.slice(0, 10).map((r) => (
-                <li
-                  key={r.id}
-                  className="flex items-start gap-3 px-3 py-2.5 cursor-pointer hover:bg-accent/5 rounded-md transition-colors"
-                  onClick={() => navigate(`/queries/${r.fingerprint_id}`)}
-                >
-                  <RegressionBadge severity={r.severity} className="mt-0.5 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm text-primary leading-snug">{r.message}</p>
-                    <p className="text-2xs text-muted mt-1 font-mono truncate">
-                      {r.normalized_query.slice(0, 110)}
-                    </p>
-                  </div>
-                  <span className="text-2xs text-muted font-mono whitespace-nowrap shrink-0">
-                    {r.regression_type}
-                  </span>
-                </li>
-              ))}
+              {regressions.slice(0, 10).map((r) => {
+                const meta = regressionMeta(r.regression_type);
+                return (
+                  <li
+                    key={r.id}
+                    className="flex items-start gap-3 px-3 py-2.5 cursor-pointer hover:bg-accent/5 rounded-md transition-colors group"
+                    onClick={() => navigate(`/queries/${r.fingerprint_id}`)}
+                  >
+                    <RegressionBadge severity={r.severity} className="mt-0.5 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-primary leading-snug flex items-center gap-2">
+                        <RegressionTypeIcon type={r.regression_type} size={13} />
+                        <span className="text-2xs font-mono text-muted uppercase tracking-wider">
+                          {meta.label}
+                        </span>
+                      </p>
+                      <p className="text-xs text-secondary mt-1 leading-snug">{r.message}</p>
+                      <p className="text-2xs text-muted mt-1 font-mono truncate">
+                        {r.normalized_query.slice(0, 110)}
+                      </p>
+                    </div>
+                    <ChevronRight
+                      size={14}
+                      className="text-muted opacity-0 group-hover:opacity-100 mt-0.5 transition-opacity"
+                    />
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

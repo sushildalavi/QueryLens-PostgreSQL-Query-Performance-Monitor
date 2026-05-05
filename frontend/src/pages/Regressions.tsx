@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRegressions } from "../api/hooks";
 import { RegressionBadge } from "../components/RegressionBadge";
+import { RegressionTypeIcon, regressionMeta } from "../components/RegressionTypeIcon";
 import { Section, Skeleton } from "../components/Section";
 
 type Severity = "all" | "high" | "medium" | "low";
@@ -103,8 +104,11 @@ export function Regressions() {
                     <td className="px-5 py-3">
                       <RegressionBadge severity={r.severity} />
                     </td>
-                    <td className="px-4 py-3 font-mono text-2xs text-secondary whitespace-nowrap">
-                      {r.regression_type}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-2 text-2xs font-mono text-secondary">
+                        <RegressionTypeIcon type={r.regression_type} size={12} />
+                        {regressionMeta(r.regression_type).label}
+                      </span>
                     </td>
                     <td className="px-4 py-3 font-mono text-2xs text-primary/90 max-w-xs truncate">
                       {r.normalized_query.slice(0, 80)}

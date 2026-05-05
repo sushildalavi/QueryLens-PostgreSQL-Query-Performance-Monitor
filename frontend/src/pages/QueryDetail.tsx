@@ -22,7 +22,9 @@ import {
 import { LatencyChart } from "../components/LatencyChart";
 import { PlanViewer } from "../components/PlanViewer";
 import { RegressionBadge } from "../components/RegressionBadge";
+import { RegressionTypeIcon, regressionMeta } from "../components/RegressionTypeIcon";
 import { Section, Skeleton } from "../components/Section";
+import { SqlCode } from "../components/SqlCode";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -121,13 +123,21 @@ export function QueryDetail() {
         </div>
       </div>
 
-      <div className="surface relative">
-        <div className="absolute top-2.5 right-2.5">
+      <div className="surface relative animate-fade-up">
+        <div className="absolute top-2.5 right-2.5 z-10">
           <CopyButton text={fp.normalized_query} />
         </div>
-        <pre className="p-4 pr-20 text-xs font-mono text-secondary overflow-x-auto whitespace-pre-wrap break-all leading-relaxed">
-          {fp.normalized_query}
-        </pre>
+        <div className="absolute left-0 top-0 bottom-0 w-9 border-r border-edge bg-panel-2/40 pointer-events-none" />
+        <div className="absolute left-0 top-0 bottom-0 w-9 flex flex-col items-center pt-4 text-2xs text-muted font-mono select-none pointer-events-none">
+          {fp.normalized_query.split("\n").map((_, i) => (
+            <span key={i} className="leading-relaxed">
+              {i + 1}
+            </span>
+          ))}
+        </div>
+        <div className="pl-12 pr-20 py-4 overflow-x-auto">
+          <SqlCode sql={fp.normalized_query} />
+        </div>
       </div>
 
       {latestMetric && (
@@ -217,18 +227,27 @@ export function QueryDetail() {
 
       {myRegs.length > 0 && (
         <Section icon={History} title="Regression history" hint={`${myRegs.length} detected`}>
-          <ul className="divide-y divide-edge">
-            {myRegs.map((r) => (
-              <li key={r.id} className="flex items-start gap-3 px-5 py-3">
-                <RegressionBadge severity={r.severity} className="mt-0.5 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-primary">{r.message}</p>
-                  <p className="text-2xs text-muted mt-1 font-mono">
-                    {r.regression_type} · {new Date(r.created_at).toLocaleString()}
-                  </p>
-                </div>
-              </li>
-            ))}
+          <ul className="divide-y divide-edge stagger-fast">
+            {myRegs.map((r) => {
+              const meta = regressionMeta(r.regression_type);
+              return (
+                <li key={r.id} className="flex items-start gap-3 px-5 py-3">
+                  <RegressionBadge severity={r.severity} className="mt-0.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-primary flex items-center gap-2">
+                      <RegressionTypeIcon type={r.regression_type} size={13} />
+                      <span className="text-2xs font-mono text-muted uppercase tracking-wider">
+                        {meta.label}
+                      </span>
+                    </p>
+                    <p className="text-sm text-secondary mt-1.5">{r.message}</p>
+                    <p className="text-2xs text-muted mt-1 font-mono">
+                      {new Date(r.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </Section>
       )}
