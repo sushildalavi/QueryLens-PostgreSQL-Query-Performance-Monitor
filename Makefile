@@ -1,4 +1,4 @@
-.PHONY: up down demo demo-reset seed workload collect test build lint logs install
+.PHONY: up down demo demo-reset seed workload collect test test-unit build lint logs install screenshots
 
 # --- docker compose ---
 up:
@@ -54,6 +54,13 @@ test-unit:
 # --- frontend ---
 build:
 	cd frontend && npm run build
+
+# regenerate README screenshots — assumes stack is running on :3030 with demo data
+screenshots:
+	cd docs/screenshots && (test -d node_modules || npm install --no-fund --no-audit playwright) && \
+	(test -d node_modules/playwright/.local-browsers || npx playwright install chromium) && \
+	FID=$$(curl -s http://localhost:8765/api/regressions?limit=100 | python3 -c "import json,sys; d=json.load(sys.stdin); [print(r['fingerprint_id']) or sys.exit(0) for r in d['items'] if r['regression_type']=='index_scan_to_seq_scan']") && \
+	node capture.mjs $$FID
 
 # --- lint ---
 lint:

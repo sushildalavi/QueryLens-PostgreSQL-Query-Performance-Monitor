@@ -34,3 +34,8 @@ dist/
 # postgres dumps
 *.sql.bak
 pgdata/
+
+# screenshots tooling — only the .mjs and PNGs are tracked
+docs/screenshots/package.json
+docs/screenshots/package-lock.json
+docs/screenshots/node_modules/

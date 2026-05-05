@@ -4,6 +4,8 @@ A developer tool that collects PostgreSQL query performance metrics, fingerprint
 
 > QueryLens uses deterministic regression rules over `pg_stat_statements` and `EXPLAIN JSON`. The AI layer only turns validated findings into readable reports.
 
+![dashboard](docs/screenshots/dashboard.png)
+
 ---
 
 ## Problem statement
@@ -214,14 +216,16 @@ Tests cover:
 
 ## Screenshots
 
-> Dashboard
+> **Dashboard** — bento layout, severity breakdown, latency landscape, regressions feed and slowest-query table.
 ![dashboard](docs/screenshots/dashboard.png)
 
-> Query detail with plan viewer
+> **Query detail** — SQL with syntax highlighting and line numbers, mean-exec & call-count time series, parsed execution plan, and full regression history for the fingerprint.
 ![query-detail](docs/screenshots/query-detail.png)
 
-> Regressions feed
+> **Regressions feed** — every detection by severity and type, with one click to drill into the offending fingerprint.
 ![regressions](docs/screenshots/regressions.png)
+
+Screenshots are captured headlessly with Playwright (`docs/screenshots/capture.mjs`) against a running stack — they reflect real demo data, not mocks.
 
 ---
 
